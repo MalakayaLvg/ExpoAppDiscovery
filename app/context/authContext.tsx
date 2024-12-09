@@ -1,98 +1,57 @@
-import { createContext, useContext, useEffect, useState } from "react";
-import React from "react";
-import axios from "axios/index";
-import * as SecureStore from 'expo-secure-store';
+import React, { createContext, useContext, useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-interface AuthProps {
-    authState?: { token: string | null; authenticated: boolean | null };
-    onRegister?: ( email: string, password: string )=> Promise<any>;
-    onLogin?: (email: string, password: string)=> Promise<any>;
-    onLogout?: ()=> Promise<any>;
+interface AuthContextType {
+    isAuthenticated: boolean;
+    loading: boolean;
+    setToken: (token: string)=> void;
+    logout: ()=> void;
+    userToken: string | null;
 }
 
-const TOKEN_KEY = 'my-jwt';
-export const API_URL = 'localhost:5000';
-const AuthContext = createContext<AuthProps>({});
 
-export const useAuth = () => {
-    return useContext(AuthContext);
-};
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider = ({children}: any ) => {
-    const [authState, setAuthState] = useState<{
-        token: string | null;
-        authenticated: boolean | null;
-    }>({
-        token: null,
-        authenticated: null
-    });
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [userToken, setUserToken] = useState<string | null>(null);
 
     useEffect(() => {
-        const loadToken = async ()=> {
-            const token = await SecureStore.getItemAsync(TOKEN_KEY);
+        const checkToken = async () => {
+            const token = await AsyncStorage.getItem("jwt");
+            setIsAuthenticated(!!token);
+            setLoading(false);
+        };
 
-            if (token) {
-                axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-                setAuthState({
-                    token: token,
-                    authenticated: true,
-                })
-            }
-        }
-        loadToken();
+        checkToken();
     }, []);
 
-    const register = async (email: string, password: string)=> {
-        try {
-            return await axios.post(`${API_URL}/users`, { email, password });
-        } catch (e) {
-            return { error: true, msg: (e as any).response.data.msg};
-        }
-    }
-
-    const login = async (email: string, password: string)=> {
-        try {
-            const result =  await axios.post(`${API_URL}/auth`, { email, password });
-
-            console.log(result)
-
-            setAuthState({
-                token: result.data.token,
-                authenticated: true
-            })
-
-            axios.defaults.headers.common['Authorization'] = `Bearer ${result.data.token}`;
-
-            await SecureStore.setItemAsync(TOKEN_KEY,result.data.token);
-
-            return result;
-
-        } catch (e) {
-            return { error: true, msg: (e as any).response.data.msg};
-        }
-    }
-
-    const logout = async ()=> {
-        await SecureStore.deleteItemAsync(TOKEN_KEY);
-
-        axios.defaults.headers.common['Authorization'] = '';
-
-        setAuthState({
-            token: null,
-            authenticated: false
-        });
+    const setToken = async (token: string) => {
+        await AsyncStorage.setItem("jwt", token);
+        setUserToken(token);
+        console.log(token)
+        setIsAuthenticated(true);
     };
 
-    const value = {
-        onRegister: register,
-        onLogin: login,
-        onLogout: logout,
-        authState
+    const logout = async () => {
+        alert("logout")
+        await AsyncStorage.removeItem("jwt");
+        setUserToken(null);
+        setIsAuthenticated(false);
     };
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+    return (
+        <AuthContext.Provider value={{ isAuthenticated, loading, setToken, logout, userToken }}>
+            {children}
+        </AuthContext.Provider>
+    );
+};
 
-
-
+export const useAuth = () => {
+    const context = useContext(AuthContext);
+    if (!context) {
+        throw new Error("useAuth must be used within an AuthProvider");
+    }
+    return context;
+};

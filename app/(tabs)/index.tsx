@@ -76,9 +76,6 @@ export default function Index() {
   <GestureHandlerRootView style={styles.container}>
     <View style={styles.container}>
         <Text style={styles.text}>Home Screen</Text>
-        <Link href="/about" style={styles.button}>
-            Go to About Screen
-        </Link>
         <View style={styles.imageContainer}>
             <View ref={imageRef} collapsable={false}>
                 <ImageViewer imgSource={PlaceholderImage} selectedImage={selectedImage} />

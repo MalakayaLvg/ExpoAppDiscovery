@@ -47,8 +47,9 @@ export default function CameraView() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
+        backgroundColor: '#25292e',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
     image: {
         width: 200,

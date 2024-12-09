@@ -1,50 +1,61 @@
 import {Button, StyleSheet, Text, View, TextInput, Image} from "react-native";
 import React, {useEffect, useState} from "react";
-import {createNativeStackNavigator} from "@react-navigation/native-stack";
-import {API_URL, useAuth} from "@/app/context/authContext";
-import ImageViewer from "@/components/ImageViewer";
-import axios from "axios/index";
+import axios from "axios";
+import { useRouter,router } from "expo-router";
+import {useAuth} from "@/app/context/authContext";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PlaceholderImage = require('@/assets/images/react-logo.png');
 
-const Stack = createNativeStackNavigator()
 
-const Login = ()=> {
+export default function LoginView({navigation}:any){
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const { onLogin, onRegister } = useAuth();
+    const [username, setUsername] = useState<string>("");
+    const [password, setPassword] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
+    const { setToken } = useAuth();
 
-    useEffect(() => {
-        const testCall = async ()=> {
-            const result = await axios.get(`${API_URL}/users`);
-        }
-        testCall();
-    }, []);
 
-    const login = async ()=> {
-        const result = await onLogin!(email,password);
-        if (result && result.error){
-            alert(result.msg);
-        }
-    }
+    const API_URL = "https://felix.esdlyon.dev";
 
-    const register = async ()=> {
-        const result = await onRegister!(email, password);
-        if (result && result.error) {
-            alert(result.msg);
-        } else {
-            login();
+    const handleLogin = async ()=> {
+        setLoading(true);
+        try {
+            const response = await axios.post(`${API_URL}/login`, { username, password });
+            if (response.status === 200) {
+                const {token} = response.data;
+                setToken(token);
+                // alert(`connection reussi, token ${token}`)
+
+                const storeToken = async (token: string) => {
+                    try {
+                        await AsyncStorage.setItem('userToken', token);
+                    } catch (error) {
+                        console.error("Erreur de stockage du token", error);
+                    }
+                };
+
+                router.replace("/(tabs)");
+            } else {
+                alert("Erreur: verifier vous indentifiant");
+            }
+        } catch (error) {
+            console.log("Erreur lors de la connection :", error);
+            alert("Impossible de se connecter :(");
+        } finally {
+            setLoading(false)
         }
     }
 
     return (
         <View style={styles.container}>
             <View style={styles.form}>
-                <TextInput style={styles.input} placeholder={"Email"} onChangeText={(text: string) => setEmail(text)} value={email}></TextInput>
-                <TextInput style={styles.input} placeholder={"Password"} secureTextEntry={true} onChangeText={(text: string) => setPassword(text)} value={password}></TextInput>
-                <Button onPress={login} title={"Sing in"}/>
-                <Button onPress={register} title={"Create Account"}/>
+                <Text>CONNEXION </Text>
+                <Text style={styles.text}>Username</Text>
+                <TextInput style={styles.input} placeholder={"Username"} onChangeText={setUsername} value={username}></TextInput>
+                <Text style={styles.text}>Password</Text>
+                <TextInput style={styles.input} placeholder={"Password"} secureTextEntry={true} onChangeText={setPassword} value={password}></TextInput>
+                <Button title={loading ? "Connexion..." : "Se connecter"} onPress={handleLogin} />
             </View>
         </View>
     )
@@ -55,6 +66,10 @@ const styles = StyleSheet.create({
         gap: 10,
         width: "60%",
     },
+    text: {
+        color: '#fff',
+        padding: 5,
+    },
     input: {
         height: 44,
         borderWidth: 1,
@@ -63,11 +78,11 @@ const styles = StyleSheet.create({
         backgroundColor: "#fff",
     },
     container: {
-        alignItems: "center",
-        width: "100%",
-        paddingTop: "30%",
-    }
+        flex: 1,
+        backgroundColor: '#25292e',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 });
 
-export default Login;
 
